@@ -1,4 +1,4 @@
-import { Actions, calcBackoff, Context, Effects, States, update, WsMachine, wsMachine } from "./index";
+import { Actions, calcBackoff, Context, Effects, States, update, WSMachine, wsMachine } from "./index";
 import WS from "jest-websocket-mock";
 
 describe(`verify exponential backoff`, () => {
@@ -150,11 +150,14 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe("verify wsMachine interactions", () => {
   let server: WS | undefined;
-  let machine: WsMachine | undefined;
+  let machine: WSMachine | undefined;
   let messages: string[] = [];
+  let stateChanges: string[] = [];
 
   beforeEach(async () => {
     messages = [];
+    stateChanges = [];
+
     server = new WS("ws://localhost:1234");
     server.on("message", (ws) => {
       ws.send("pong");
@@ -164,7 +167,10 @@ describe("verify wsMachine interactions", () => {
       pingTimeoutMillis: 5,
       pongTimeoutMillis: 5,
       onMessage: (msg) => {
-        messages.push(msg);
+        messages.push(msg.data);
+      },
+      onStateChange: ({previous, current}) => {
+        stateChanges.push(`${previous.tag}->${current.tag}`);
       },
       backoffFn: calcBackoff
     });
@@ -182,6 +188,11 @@ describe("verify wsMachine interactions", () => {
     await expect(server).toReceiveMessage("ping");
     expect(server).toHaveReceivedMessages(["ping"]);
     expect(machine?.currentState()?.tag).toEqual("OPEN");
+    expect(stateChanges).toEqual([
+      "INITIAL->CONNECTING",
+      "CONNECTING->OPEN",
+      "OPEN->OPEN"
+    ]);
   });
 
   test("connect to machine and verify message received", async () => {
@@ -191,6 +202,20 @@ describe("verify wsMachine interactions", () => {
     server?.send("test");
     expect(messages).toEqual(["test"]);
   });
+
+  test("connect to machine and send message", async () => {
+    machine?.connect();
+    await server?.connected;
+
+    machine?.send("Hello");
+    await expect(server).toReceiveMessage("Hello");
+  });
+
+  test("sending message before open throws", async () => {
+    machine?.connect();
+    expect(() => machine?.send("Hello")).toThrow("open state");
+  });
+
 
   test("server close triggers reconnect attempt(s)", async () => {
     machine?.connect();
@@ -235,4 +260,27 @@ test("no pong triggers reconnect", async () => {
   expect(machine?.currentState().tag).toEqual("RECONNECTING");
   machine.disconnect();
   expect(machine?.currentState().tag).toEqual("INITIAL");
+});
+
+test("custom ping and pong works", async () => {
+  const messages: string[] = [];
+  const server = new WS("ws://localhost:2345");
+  const machine = wsMachine({
+    url: "ws://localhost:2345",
+    pingTimeoutMillis: 5,
+    pongTimeoutMillis: 5,
+    pingMsg: "MyPing",
+    pongMsg: "MyPong",
+    onMessage: (msg) => { messages.push(msg.data) },
+    backoffFn: calcBackoff
+  });
+
+  machine.connect();
+  await server.connected;
+  await expect(server).toReceiveMessage("MyPing");
+  server.send("MyPong");
+  server.send("SomeMessage")
+
+  expect(messages).toStrictEqual(["SomeMessage"]);
+  machine.disconnect();
 });

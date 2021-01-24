@@ -60,7 +60,7 @@ export type Effect = typeof Effects._Union;
 export const calcBackoff = (
   attempt: number,
   randSeed: number,
-  maxVal = 30000
+  maxVal = 30000,
 ): number => {
   if (attempt === 0) {
     return 0;
@@ -176,17 +176,17 @@ export const update = (action: Action, state: State): [State, Effect[]] =>
       }),
   });
 
-export type Config = Pick<
-  Context,
-  "url" | "pingTimeoutMillis" | "pongTimeoutMillis" | "backoffFn"
-  > & {
+export type Config = Pick<Context,
+  "url" | "pingTimeoutMillis" | "pongTimeoutMillis" | "backoffFn"> & {
   pingMsg?: string,
-  onMessage: (msg: string) => void,
+  pongMsg?: string,
+  onMessage: (msg: MessageEvent) => void,
   onStateChange?: (states: { previous: State, current: State }) => void
 };
 
-export type WsMachine = {
+export type WSMachine = {
   connect: () => void;
+  send: (data: string | ArrayBufferLike | Blob | ArrayBufferView) => void;
   currentState: () => State;
   disconnect: () => void;
 };
@@ -194,7 +194,7 @@ export type WsMachine = {
 // Defined to handle node vs browser in dev/test vs prod
 type TTimeout = ReturnType<typeof setTimeout>;
 
-export const wsMachine = (config: Config): WsMachine => {
+export const wsMachine = (config: Config): WSMachine => {
   let ws: WebSocket | undefined;
   const wsState = Atom.of(States.INITIAL({ ...config, reconnectAttempt: 0, randSeed: Math.random() }));
   const timeouts: Map<TimeoutKey, TTimeout> = new Map();
@@ -205,7 +205,7 @@ export const wsMachine = (config: Config): WsMachine => {
   const addEventListener = (
     webSocket: WebSocket,
     type: WsMessageKeys,
-    handler: (ev: any) => void
+    handler: (ev: any) => void,
   ) => {
     webSocket.addEventListener(type, handler);
     wsHandlers.set(type, handler);
@@ -251,7 +251,6 @@ export const wsMachine = (config: Config): WsMachine => {
         addEventListener(ws, "open", onOpen);
 
         const onClose = () => {
-          // console.warn("Connection closed, initiating reconnect with backoff");
           transition(conn.onClose);
           transition(Actions.RECONNECT());
         };
@@ -259,8 +258,8 @@ export const wsMachine = (config: Config): WsMachine => {
 
         const onMessage = (ev: MessageEvent) => {
           const msg = ev.data;
-          if (msg !== "pong") {
-            config.onMessage(msg);
+          if (msg !== config.pongMsg ?? "pong") {
+            config.onMessage(ev);
           }
           transition(conn.onPongMessage);
         };
@@ -270,7 +269,7 @@ export const wsMachine = (config: Config): WsMachine => {
       SCHEDULE_TIMEOUT: (t) => {
         timeouts.set(
           t.key,
-          setTimeout(() => transition(t.onTimeout), t.timeoutMillis)
+          setTimeout(() => transition(t.onTimeout), t.timeoutMillis),
         );
       },
 
@@ -292,13 +291,24 @@ export const wsMachine = (config: Config): WsMachine => {
     });
   };
 
-  if(config.onStateChange) {
-    addChangeHandler(wsState, "wsStateHandler", config.onStateChange)
+  const send = (data: string | ArrayBufferLike | Blob | ArrayBufferView) => {
+    if (States.is.OPEN(deref(wsState)) && ws instanceof WebSocket) {
+      ws.send(data);
+    } else {
+      const errorMsg = `Can't send message when websocket connection isn't in an open state. State is: ${deref(wsState).tag}`;
+      throw Error(errorMsg);
+    }
+  };
+
+
+  if (config.onStateChange) {
+    addChangeHandler(wsState, "wsStateHandler", config.onStateChange);
   }
 
 
   return {
     connect: () => transition(Actions.CONNECT()),
+    send: send,
     currentState: () => deref(wsState),
     disconnect: () => {
       removeChangeHandler(wsState, "wsStateHandler");
@@ -306,7 +316,7 @@ export const wsMachine = (config: Config): WsMachine => {
         removeEventListeners(ws);
         clearTimeouts();
         swap(wsState, (currState) =>
-          States.INITIAL({ ...currState, reconnectAttempt: 0 })
+          States.INITIAL({ ...currState, reconnectAttempt: 0 }),
         );
         ws.close();
       }

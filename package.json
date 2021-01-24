@@ -20,7 +20,7 @@
   "bugs": {
     "url": "https://github.com/rundis/ts-ws-machine/issues"
   },
-  "homepage": "https://github.com/rundis/ts-ws-machine",
+  "homepage": "https://github.com/rundis/ts-ws-machine#readme",
   "scripts": {
     "build": "tsc",
     "test": "jest --no-cache --verbose --coverage",
