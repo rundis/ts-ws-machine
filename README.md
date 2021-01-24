@@ -2,7 +2,7 @@
 TypeScript WebSocket Client modelled as an FSM. Comes with reconnect and heartbeat support
 
 
-##Installation
+## Installation
 
 ```bash
 npm install ts-ws-machine
@@ -43,12 +43,12 @@ ws.send("Msg to server");
 ws.disconnect();
 ```
 
-###Heartbeats
+### Heartbeats
 WSMachine will regularly send a ping message `pingTimeoutMillis` after it last received a response from the ws endpoint.
 After a ping message is sent it will wait up-to `pongTimeoutMillis`, if no response is received from the server within that time period, the underlying websocket will be closed
 and WSMachine will attempt to reconnect. If indeed a message is received (either a "pong" message or any other message really), a new ping will be scheduled.
 
-###Reconnect
+### Reconnect
 WSMachine will automatically try to reconnect if the underlying websocket is closed or a heartbeat is missed.
 This lib comes with a default backoff implementation (`calcBackoff`) using an exponential backoff with some "jitter".
   
@@ -69,7 +69,7 @@ const randomBackoff = (attempt: number, randSeed: number) => 1000 * attempt * ra
 ```
 
 
-###Config
+### Config
 - **url**: A valid websocket url
 - **pingTimeoutmillis**: Number of milliseconds to wait since last hearing from the server before sending a ping message
 - **pongTimeoutmillis**: Number of milliseconds to wait for server to send a message response after a ping message has been sent
