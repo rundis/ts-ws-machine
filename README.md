@@ -1,6 +1,8 @@
 # ts-ws-machine
 TypeScript WebSocket Client modelled as an FSM. Comes with reconnect and heartbeat support
 
+[![npm version](https://img.shields.io/npm/v/ts-ws-machine)](https://www.npmjs.com/package/ts-ws-machine)
+[![Build](https://github.com/rundis/ts-ws-machine/workflows/Build/badge.svg?branch=main)](https://github.com/rundis/ts-ws-machine/actions)
 
 ## Installation
 
