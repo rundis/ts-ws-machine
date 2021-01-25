@@ -1,4 +1,13 @@
-import { Actions, calcBackoff, Context, Effects, States, update, WSMachine, wsMachine } from "./index";
+import {
+  Actions,
+  calcBackoff,
+  Context,
+  Effects,
+  States,
+  update,
+  WSMachine,
+  wsMachine,
+} from "./index";
 import WS from "jest-websocket-mock";
 
 describe(`verify exponential backoff`, () => {
@@ -49,7 +58,7 @@ describe("verify all update transitions", () => {
     randSeed: 0,
     pingTimeoutMillis: 1,
     pongTimeoutMillis: 1,
-    backoffFn: calcBackoff
+    backoffFn: calcBackoff,
   };
 
   // states
@@ -142,7 +151,7 @@ describe("verify all update transitions", () => {
       const [nextState, effects] = update(action, sourceState);
       expect(nextState).toStrictEqual(targetState);
       expect(effects).toStrictEqual(expectedEffects);
-    }
+    },
   );
 });
 
@@ -169,10 +178,10 @@ describe("verify wsMachine interactions", () => {
       onMessage: (msg) => {
         messages.push(msg.data);
       },
-      onStateChange: ({previous, current}) => {
+      onStateChange: ({ previous, current }) => {
         stateChanges.push(`${previous.tag}->${current.tag}`);
       },
-      backoffFn: calcBackoff
+      backoffFn: calcBackoff,
     });
   });
 
@@ -191,7 +200,7 @@ describe("verify wsMachine interactions", () => {
     expect(stateChanges).toEqual([
       "INITIAL->CONNECTING",
       "CONNECTING->OPEN",
-      "OPEN->OPEN"
+      "OPEN->OPEN",
     ]);
   });
 
@@ -215,7 +224,6 @@ describe("verify wsMachine interactions", () => {
     machine?.connect();
     expect(() => machine?.send("Hello")).toThrow("open state");
   });
-
 
   test("server close triggers reconnect attempt(s)", async () => {
     machine?.connect();
@@ -249,8 +257,10 @@ test("no pong triggers reconnect", async () => {
     url: "ws://localhost:12345",
     pingTimeoutMillis: 5,
     pongTimeoutMillis: 5,
-    onMessage: () => { return; },
-    backoffFn: calcBackoff
+    onMessage: () => {
+      return;
+    },
+    backoffFn: calcBackoff,
   });
 
   machine.connect();
@@ -271,15 +281,17 @@ test("custom ping and pong works", async () => {
     pongTimeoutMillis: 5,
     pingMsg: "MyPing",
     pongMsg: "MyPong",
-    onMessage: (msg) => { messages.push(msg.data) },
-    backoffFn: calcBackoff
+    onMessage: (msg) => {
+      messages.push(msg.data);
+    },
+    backoffFn: calcBackoff,
   });
 
   machine.connect();
   await server.connected;
   await expect(server).toReceiveMessage("MyPing");
   server.send("MyPong");
-  server.send("SomeMessage")
+  server.send("SomeMessage");
 
   expect(messages).toStrictEqual(["SomeMessage"]);
   machine.disconnect();

@@ -1,6 +1,11 @@
 import unionize, { ofType } from "unionize";
-import { addChangeHandler, Atom, deref, removeChangeHandler, swap } from "@libre/atom";
-
+import {
+  addChangeHandler,
+  Atom,
+  deref,
+  removeChangeHandler,
+  swap,
+} from "@libre/atom";
 
 export type BackoffFn = (attempt: number, randSeed: number) => number;
 
@@ -176,12 +181,14 @@ export const update = (action: Action, state: State): [State, Effect[]] =>
       }),
   });
 
-export type Config = Pick<Context,
-  "url" | "pingTimeoutMillis" | "pongTimeoutMillis" | "backoffFn"> & {
-  pingMsg?: string,
-  pongMsg?: string,
-  onMessage: (msg: MessageEvent) => void,
-  onStateChange?: (states: { previous: State, current: State }) => void
+export type Config = Pick<
+  Context,
+  "url" | "pingTimeoutMillis" | "pongTimeoutMillis" | "backoffFn"
+> & {
+  pingMsg?: string;
+  pongMsg?: string;
+  onMessage: (msg: MessageEvent) => void;
+  onStateChange?: (states: { previous: State; current: State }) => void;
 };
 
 export type WSMachine = {
@@ -196,7 +203,9 @@ type TTimeout = ReturnType<typeof setTimeout>;
 
 export const wsMachine = (config: Config): WSMachine => {
   let ws: WebSocket | undefined;
-  const wsState = Atom.of(States.INITIAL({ ...config, reconnectAttempt: 0, randSeed: Math.random() }));
+  const wsState = Atom.of(
+    States.INITIAL({ ...config, reconnectAttempt: 0, randSeed: Math.random() }),
+  );
   const timeouts: Map<TimeoutKey, TTimeout> = new Map();
 
   type WsMessageKeys = keyof WebSocketEventMap;
@@ -295,16 +304,16 @@ export const wsMachine = (config: Config): WSMachine => {
     if (States.is.OPEN(deref(wsState)) && ws instanceof WebSocket) {
       ws.send(data);
     } else {
-      const errorMsg = `Can't send message when websocket connection isn't in an open state. State is: ${deref(wsState).tag}`;
+      const errorMsg = `Can't send message when websocket connection isn't in an open state. State is: ${
+        deref(wsState).tag
+      }`;
       throw Error(errorMsg);
     }
   };
 
-
   if (config.onStateChange) {
     addChangeHandler(wsState, "wsStateHandler", config.onStateChange);
   }
-
 
   return {
     connect: () => transition(Actions.CONNECT()),
