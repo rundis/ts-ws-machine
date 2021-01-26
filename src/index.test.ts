@@ -196,6 +196,7 @@ describe("verify wsMachine interactions", () => {
 
     await expect(server).toReceiveMessage("ping");
     expect(server).toHaveReceivedMessages(["ping"]);
+    expect(messages).toEqual([]);
     expect(machine?.currentState()?.tag).toEqual("OPEN");
     expect(stateChanges).toEqual([
       "INITIAL->CONNECTING",

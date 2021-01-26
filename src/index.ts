@@ -267,7 +267,7 @@ export const wsMachine = (config: Config): WSMachine => {
 
         const onMessage = (ev: MessageEvent) => {
           const msg = ev.data;
-          if (msg !== config.pongMsg ?? "pong") {
+          if (msg !== (config.pongMsg ?? "pong")) {
             config.onMessage(ev);
           }
           transition(conn.onPongMessage);
